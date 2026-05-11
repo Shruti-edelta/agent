@@ -1,0 +1,10 @@
+flask
+flask-cors
+flask-session
+sqlalchemy
+psycopg2-binary
+pymysql
+cryptography
+requests
+python-dotenv
+pymongo

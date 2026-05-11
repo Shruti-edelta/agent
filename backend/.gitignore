@@ -1,0 +1,7 @@
+env
+__pycache__
+.flask_sessions
+models
+data
+.DS_Store
+.venv
