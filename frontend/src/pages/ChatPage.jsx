@@ -76,11 +76,21 @@ export default function ChatPage() {
 
     const userPrompt = input.trim();
     setInput('');
+    
+    // Format history for backend
+    const history = messages.map(msg => ({
+      role: msg.role === 'bot' ? 'assistant' : 'user',
+      content: msg.role === 'bot' ? msg.answer : msg.content
+    }));
+
     setMessages(prev => [...prev, { role: 'user', content: userPrompt }]);
     setIsTyping(true);
 
     try {
-      const res = await api.post('/chat', { prompt: userPrompt });
+      const res = await api.post('/chat', { 
+        prompt: userPrompt,
+        messages: history 
+      });
       const { answer, success, message } = res.data;
 
       setMessages(prev => [...prev, {
