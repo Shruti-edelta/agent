@@ -11,18 +11,36 @@ export default function ChatPage() {
     answer: "Hello! I'm Agent, your AI assistant. How can I help you today?",
   };
 
-  const [chats, setChats] = useState([
-    {
-      id: Date.now(),
-      title: 'New Chat',
-      messages: [initialGreeting]
-    }
-  ]);
-  const [activeChatId, setActiveChatId] = useState(chats[0].id);
+  // Load from sessionStorage on init
+  const [chats, setChats] = useState(() => {
+    const savedChats = sessionStorage.getItem('agent_chats');
+    return savedChats ? JSON.parse(savedChats) : [
+      {
+        id: Date.now(),
+        title: 'New Chat',
+        messages: [initialGreeting]
+      }
+    ];
+  });
+
+  const [activeChatId, setActiveChatId] = useState(() => {
+    const savedActiveId = sessionStorage.getItem('agent_active_chat_id');
+    return savedActiveId ? parseInt(savedActiveId) : chats[0].id;
+  });
+
   const [input, setInput] = useState('');
-  const [typingChatId, setTypingChatId] = useState(null); // Changed to store specific chat ID
+  const [typingChatId, setTypingChatId] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
+
+  // Persistence logic
+  useEffect(() => {
+    sessionStorage.setItem('agent_chats', JSON.stringify(chats));
+  }, [chats]);
+
+  useEffect(() => {
+    sessionStorage.setItem('agent_active_chat_id', activeChatId.toString());
+  }, [activeChatId]);
 
   const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
   const messages = activeChat.messages;
