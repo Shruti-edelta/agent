@@ -1,5 +1,6 @@
-flask
-flask-cors
+quart
+quart-cors
+hypercorn
 flask-session
 sqlalchemy
 psycopg2-binary
@@ -8,3 +9,4 @@ cryptography
 requests
 python-dotenv
 pymongo
+httpx

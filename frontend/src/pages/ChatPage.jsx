@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, Mic, MicOff, Plus, MessageSquare, Bot, Trash2 } from 'lucide-react';
-import api from '../api';
+import api, { API_BASE_URL } from '../api';
 import ChatMessage from '../components/ChatMessage';
 
 export default function ChatPage() {
@@ -151,7 +151,7 @@ export default function ChatPage() {
     setTypingChatId(currentChatId); // Set typing for this specific chat
 
     try {
-      const response = await fetch('http://localhost:5001/api/chat', {
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: userPrompt, messages: history })

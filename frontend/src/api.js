@@ -1,8 +1,15 @@
 import axios from 'axios';
 
+// Dynamically pick backend host based on how the app is accessed
+const BACKEND_HOST = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'localhost'
+  : window.location.hostname;
+
+export const API_BASE_URL = `http://${BACKEND_HOST}:5001`;
+
 const api = axios.create({
-  baseURL: 'http://192.168.0.104:5001/api',
-  withCredentials: true, // Crucial for session cookies
+  baseURL: `${API_BASE_URL}/api`,
+  withCredentials: true,
 });
 
 export default api;
