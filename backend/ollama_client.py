@@ -20,7 +20,7 @@ async def stream_chat(messages: list, model: str = None):
         "stream": True,
     }
     
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=None) as client:
         async with client.stream("POST", url, json=payload) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():

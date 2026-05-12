@@ -9,6 +9,7 @@ load_dotenv()
 
 app = Quart(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "chatbot-dev-secret-key")
+app.config["RESPONSE_TIMEOUT"] = None
 
 ALLOWED_ORIGINS = {
     "http://localhost:5173",
@@ -75,7 +76,9 @@ async def chat():
         "Connection": "keep-alive",
         **cors_headers,  # Inject CORS headers directly into stream response
     }
-    return Response(generate(), status=200, headers=headers)
+    response = Response(generate(), status=200, headers=headers)
+    response.timeout = None  # Disable Quart's default 60-second timeout
+    return response
 
 
 if __name__ == "__main__":
