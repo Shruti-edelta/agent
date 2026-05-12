@@ -9,13 +9,14 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "chatbot-dev-secret-key")
-CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://192.168.0.104:5173"])
+CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://127.0.0.1:5173","http://192.168.0.104:5173"])
 
 @app.route("/api/health", methods=["GET"])
 def health():
     """Health check — also reports Ollama status."""
     ollama_status = ollama_client.check_ollama_health()
     return jsonify({"status": "ok", "ollama": ollama_status})
+
 
 @app.route("/api/chat", methods=["POST"])
 def chat():

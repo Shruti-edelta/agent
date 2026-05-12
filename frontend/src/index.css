@@ -434,18 +434,6 @@ body {
   white-space: pre-wrap;
 }
 
-.typing-indicator {
-  display: flex;
-  gap: 6px;
-  padding: 16px 20px;
-  background: var(--bot-msg);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  border-bottom-left-radius: 4px;
-  align-self: flex-start;
-  width: fit-content;
-}
-
 .dot {
   width: 8px;
   height: 8px;

@@ -1,10 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bot, User } from 'lucide-react';
 
 export default function ChatMessage({ message }) {
   const isUser = message.role === 'user';
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
+  const thinkingRef = useRef(null);
   const hasAnswer = !!message.answer;
+
+  // Auto-scroll thinking block as it streams
+  useEffect(() => {
+    if (thinkingRef.current) {
+      thinkingRef.current.scrollTop = thinkingRef.current.scrollHeight;
+    }
+  }, [message.thinking]);
 
   // Auto-collapse thinking when answer starts appearing
   useEffect(() => {
@@ -51,16 +59,23 @@ export default function ChatMessage({ message }) {
                 </button>
                 
                 {isThinkingExpanded && (
-                  <div className="message-thinking" style={{ 
-                    fontSize: '0.85em', 
-                    color: '#94a3b8', 
-                    fontStyle: 'italic',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    borderLeft: '2px solid #38bdf8',
-                    whiteSpace: 'pre-wrap'
-                  }}>
+                  <div 
+                    ref={thinkingRef}
+                    className="message-thinking" 
+                    style={{ 
+                      fontSize: '0.85em', 
+                      color: '#94a3b8', 
+                      fontStyle: 'italic',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      borderLeft: '2px solid #38bdf8',
+                      whiteSpace: 'pre-wrap',
+                      maxHeight: '100px', // Roughly 4 lines
+                      overflowY: 'auto',
+                      scrollbarWidth: 'thin'
+                    }}
+                  >
                     {message.thinking}
                   </div>
                 )}

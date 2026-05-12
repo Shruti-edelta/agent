@@ -262,14 +262,6 @@ export default function ChatPage() {
           {messages.map((msg, i) => (
             <ChatMessage key={i} message={msg} />
           ))}
-
-          {typingChatId === activeChatId && (
-            <div className="typing-indicator">
-              <div className="dot"></div>
-              <div className="dot"></div>
-              <div className="dot"></div>
-            </div>
-          )}
           <div ref={messagesEndRef} />
         </div>
 
