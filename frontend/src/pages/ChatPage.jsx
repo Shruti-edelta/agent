@@ -151,39 +151,74 @@ export default function ChatPage() {
     setTypingChatId(currentChatId); // Set typing for this specific chat
 
     try {
-      const res = await api.post('/chat', { 
-        prompt: userPrompt,
-        messages: history 
+      const response = await fetch('http://localhost:5001/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: userPrompt, messages: history })
       });
-      const { answer, success, message } = res.data;
 
+      if (!response.ok) throw new Error('Failed to connect to assistant');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      
+      let fullAnswer = '';
+      let fullThinking = '';
+
+      // Initialize the bot message in the chat
       setChats(prev => prev.map(c => 
         c.id === currentChatId ? { 
           ...c, 
           messages: [...c.messages, {
             role: 'bot',
-            answer: answer,
-            error: !success ? message : null
+            answer: '',
+            thinking: '',
           }] 
         } : c
       ));
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.error) throw new Error(data.error);
+
+              fullAnswer += (data.content || '');
+              fullThinking += (data.thinking || '');
+
+              setChats(prev => prev.map(c => 
+                c.id === currentChatId ? { 
+                  ...c, 
+                  messages: c.messages.map((m, idx) => 
+                    idx === c.messages.length - 1 ? { ...m, answer: fullAnswer, thinking: fullThinking } : m
+                  )
+                } : c
+              ));
+            } catch (e) {
+              console.error("Error parsing stream chunk:", e);
+            }
+          }
+        }
+      }
     } catch (err) {
       setChats(prev => prev.map(c => 
         c.id === currentChatId ? { 
           ...c, 
           messages: [...c.messages, {
             role: 'bot',
-            error: err.response?.data?.message || err.message || 'An error occurred while generating the response.'
+            error: err.message || 'An error occurred while generating the response.'
           }] 
         } : c
       ));
     } finally {
-      if (currentChatId === activeChatId) {
-        setTypingChatId(null); // Only clear if we're still on the same chat
-      } else {
-        // If we switched away, we still need to clear the typing status for that ID eventually
-        setTypingChatId(prev => prev === currentChatId ? null : prev);
-      }
+      setTypingChatId(null);
     }
   };
 

@@ -1,7 +1,17 @@
+import { useState, useEffect } from 'react';
 import { Bot, User } from 'lucide-react';
 
 export default function ChatMessage({ message }) {
   const isUser = message.role === 'user';
+  const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
+  const hasAnswer = !!message.answer;
+
+  // Auto-collapse thinking when answer starts appearing
+  useEffect(() => {
+    if (hasAnswer && isThinkingExpanded) {
+      setIsThinkingExpanded(false);
+    }
+  }, [hasAnswer]);
 
   return (
     <div className={`message ${isUser ? 'user' : 'bot'}`}>
@@ -17,6 +27,46 @@ export default function ChatMessage({ message }) {
           <div>{message.content}</div>
         ) : (
           <div>
+            {message.thinking && (
+              <div className="message-thinking-container" style={{ marginBottom: '12px' }}>
+                <button 
+                  onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#38bdf8',
+                    fontSize: '0.75em',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '0',
+                    marginBottom: '4px',
+                    opacity: 0.7
+                  }}
+                >
+                  {isThinkingExpanded ? '▼ Hide Thinking' : '▶ Show Thinking Process'}
+                </button>
+                
+                {isThinkingExpanded && (
+                  <div className="message-thinking" style={{ 
+                    fontSize: '0.85em', 
+                    color: '#94a3b8', 
+                    fontStyle: 'italic',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    borderLeft: '2px solid #38bdf8',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {message.thinking}
+                  </div>
+                )}
+              </div>
+            )}
+            
             {message.answer && (
               <div className="message-answer">{message.answer}</div>
             )}
