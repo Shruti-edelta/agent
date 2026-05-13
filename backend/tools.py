@@ -1,4 +1,28 @@
 import httpx
+from datetime import datetime
+import pytz
+
+async def get_current_time(timezone: str = "UTC"):
+    """
+    Get the current date and time for a given timezone.
+    """
+    try:
+        tz = pytz.timezone(timezone)
+        now = datetime.now(tz)
+        return {
+            "timezone": timezone,
+            "current_time": now.strftime("%Y-%m-%d %H:%M:%S %Z"),
+            "iso_format": now.isoformat()
+        }
+    except Exception as e:
+        # Fallback to local time if timezone is invalid
+        now = datetime.now()
+        return {
+            "error": f"Invalid timezone '{timezone}', returning system time instead.",
+            "current_time": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "iso_format": now.isoformat()
+        }
+
 
 async def get_weather(location: str):
     """
@@ -30,7 +54,8 @@ async def get_weather(location: str):
 
 # Map of tool names to functions for easy lookup
 AVAILABLE_TOOLS = {
-    "get_weather": get_weather
+    "get_weather": get_weather,
+    "get_current_time": get_current_time
 }
 
 TOOL_DEFINITIONS = [
@@ -48,6 +73,22 @@ TOOL_DEFINITIONS = [
                     },
                 },
                 "required": ["location"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_time",
+            "description": "Get the current date and time for a specific timezone",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timezone": {
+                        "type": "string",
+                        "description": "The timezone to get the time for, e.g. 'UTC', 'America/New_York', 'Asia/Kolkata'. Default is 'UTC'.",
+                    },
+                },
             },
         },
     }
