@@ -1,7 +1,9 @@
 import os
 import json
+import re
 import httpx
 from dotenv import load_dotenv
+from tools import AVAILABLE_TOOLS, TOOL_DEFINITIONS
 
 load_dotenv()
 
@@ -36,21 +38,77 @@ async def stream_chat(messages: list, model: str = None):
 
 
 async def general_chat(user_prompt: str, history: list = None):
-    """Handle normal conversation with history using async streaming."""
+    """Handle conversation with manual tool support (ReAct pattern)."""
+    
+    # Detailed system prompt for manual tool calling
+    tools_desc = "\n".join([f"- {t['function']['name']}: {t['function']['description']}. Arguments: {t['function']['parameters']['properties']}" for t in TOOL_DEFINITIONS])
+    
     system_prompt = (
         "You are Agent, a helpful and friendly AI assistant. "
-        "Answer the user's questions in a clear and concise manner."
+        "You have access to the following tools:\n"
+        f"{tools_desc}\n\n"
+        "If you need to use a tool, respond ONLY with the tool call in this format:\n"
+        "TOOL: tool_name({\"arg\": \"value\"})\n"
+        "Otherwise, respond normally to the user."
     )
     
     messages = [{"role": "system", "content": system_prompt}]
-    
     if history:
         messages.extend(history)
-    
     messages.append({"role": "user", "content": user_prompt})
     
-    async for chunk in stream_chat(messages):
-        yield chunk
+    try:
+        # First call to see if it wants to use a tool (non-streaming for easier parsing)
+        url = f"{OLLAMA_HOST}/api/chat"
+        payload = {
+            "model": OLLAMA_MODEL,
+            "messages": messages,
+            "stream": False
+        }
+
+        async with httpx.AsyncClient(timeout=None) as client:
+            resp = await client.post(url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            response_text = data.get("message", {}).get("content", "")
+            thinking_text = data.get("message", {}).get("thinking", "")
+            
+            # Simple parsing for TOOL: tool_name({...})
+            if "TOOL:" in response_text:
+                match = re.search(r"TOOL:\s*(\w+)\((.*)\)", response_text)
+                if match:
+                    tool_name = match.group(1)
+                    args_str = match.group(2)
+                    
+                    if tool_name in AVAILABLE_TOOLS:
+                        try:
+                            args = json.loads(args_str)
+                            print(f"Manual tool call: {tool_name} with {args}")
+                            
+                            # Execute tool
+                            result = await AVAILABLE_TOOLS[tool_name](**args)
+                            
+                            # Add tool request and result to history
+                            messages.append({"role": "assistant", "content": response_text})
+                            messages.append({"role": "user", "content": f"Tool Result: {json.dumps(result)}"})
+                            
+                            # Final streaming response
+                            async for chunk in stream_chat(messages):
+                                yield chunk
+                            return
+                        except Exception as e:
+                            print(f"Error parsing tool args: {e}")
+            
+            # If no tool was detected or parsing failed, yield the original response
+            yield {
+                "content": response_text,
+                "thinking": thinking_text,
+                "done": True
+            }
+
+    except Exception as e:
+        print(f"Error in general_chat: {e}")
+        yield {"error": str(e), "done": True}
 
 
 async def check_ollama_health() -> dict:
