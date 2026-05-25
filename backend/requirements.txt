@@ -1,7 +1,5 @@
-quart
-quart-cors
-hypercorn
-flask-session
+fastapi
+uvicorn
 sqlalchemy
 psycopg2-binary
 pymysql

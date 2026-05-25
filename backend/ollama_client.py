@@ -47,7 +47,7 @@ async def general_chat(user_prompt: str, history: list = None):
         "You are Agent, a helpful and friendly AI assistant. "
         "You have access to the following tools:\n"
         f"{tools_desc}\n\n"
-        "If you need to use a tool, respond ONLY with the tool call in this format:\n"
+        "If you need to use a tool, respond with the tool call in this format:\n"
         "TOOL: tool_name({\"arg\": \"value\"})\n"
         "Otherwise, respond normally to the user."
     )
@@ -71,40 +71,47 @@ async def general_chat(user_prompt: str, history: list = None):
             resp.raise_for_status()
             data = resp.json()
             response_text = data.get("message", {}).get("content", "")
-            thinking_text = data.get("message", {}).get("thinking", "")
-            
-            # Simple parsing for TOOL: tool_name({...})
+
+            tool_name = None
+            args_str = ""
             if "TOOL:" in response_text:
-                match = re.search(r"TOOL:\s*(\w+)\((.*)\)", response_text)
-                if match:
-                    tool_name = match.group(1)
-                    args_str = match.group(2)
-                    
-                    if tool_name in AVAILABLE_TOOLS:
-                        try:
-                            args = json.loads(args_str)
-                            print(f"Manual tool call: {tool_name} with {args}")
-                            
-                            # Execute tool
-                            result = await AVAILABLE_TOOLS[tool_name](**args)
-                            
-                            # Add tool request and result to history
-                            messages.append({"role": "assistant", "content": response_text})
-                            messages.append({"role": "user", "content": f"Tool Result: {json.dumps(result)}"})
-                            
-                            # Final streaming response
-                            async for chunk in stream_chat(messages):
-                                yield chunk
-                            return
-                        except Exception as e:
-                            print(f"Error parsing tool args: {e}")
-            
-            # If no tool was detected or parsing failed, yield the original response
-            yield {
-                "content": response_text,
-                "thinking": thinking_text,
-                "done": True
-            }
+                name_match = re.search(r"TOOL:\s*(\w+)\s*\(", response_text)
+                if name_match:
+                    tool_name = name_match.group(1)
+                    start = response_text.find("{", name_match.end() - 1)
+                    if start != -1:
+                        depth, end = 0, -1
+                        for i, ch in enumerate(response_text[start:], start):
+                            if ch == "{":
+                                depth += 1
+                            elif ch == "}":
+                                depth -= 1
+                                if depth == 0:
+                                    end = i
+                                    break
+                        if end != -1:
+                            args_str = response_text[start:end + 1]
+
+            if tool_name and tool_name in AVAILABLE_TOOLS and args_str:
+                try:
+                    args = json.loads(args_str)
+                    print(f"Manual tool call: {tool_name} with {args}")
+
+                    # Execute the tool
+                    result = await AVAILABLE_TOOLS[tool_name](**args)
+
+                    # Feed tool result back and stream the final answer
+                    messages.append({"role": "assistant", "content": response_text})
+                    messages.append({"role": "user", "content": f"Tool Result: {json.dumps(result)}"})
+
+                    async for chunk in stream_chat(messages):
+                        yield chunk
+                    return
+                except Exception as e:
+                    print(f"Error parsing/executing tool: {e}")
+
+            async for chunk in stream_chat(messages):
+                yield chunk
 
     except Exception as e:
         print(f"Error in general_chat: {e}")
