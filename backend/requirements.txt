@@ -1,11 +1,6 @@
 fastapi
-uvicorn
-sqlalchemy
-psycopg2-binary
-pymysql
-cryptography
-requests
-python-dotenv
-pymongo
+uvicorn[standard]
 httpx
+pydantic-settings
+python-dotenv
 pytz

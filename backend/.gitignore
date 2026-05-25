@@ -5,3 +5,5 @@ models
 data
 .DS_Store
 .venv
+app
+run.py
