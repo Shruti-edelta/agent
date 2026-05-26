@@ -1,8 +1,22 @@
 import httpx
 from datetime import datetime
 import pytz
+from typing import Annotated
+from pydantic import Field
+from mcp.server.fastmcp import FastMCP
+import sys
 
-async def get_current_time(timezone: str = "UTC"):
+print("Loading agent-tools...", file=sys.stderr)
+# Create the MCP server instance
+mcp = FastMCP("agent-tools")
+
+@mcp.tool()
+async def get_current_time(
+    timezone: Annotated[
+        str,
+        Field(description="The timezone to get the time for, e.g. 'UTC', 'America/New_York', 'Asia/Kolkata'. Default is 'UTC'.")
+    ] = "UTC"
+) -> dict:
     """
     Get the current date and time for a given timezone.
     """
@@ -24,7 +38,13 @@ async def get_current_time(timezone: str = "UTC"):
         }
 
 
-async def get_weather(location: str):
+@mcp.tool()
+async def get_weather(
+    location: Annotated[
+        str,
+        Field(description="The city and state, e.g. San Francisco, CA")
+    ]
+) -> dict:
     """
     Fetch real-time weather information for a given location using wttr.in.
     """
@@ -35,7 +55,6 @@ async def get_weather(location: str):
             response = await client.get(url)
             response.raise_for_status()
             data = response.json()
-            
             current = data['current_condition'][0]
             temp_c = current['temp_C']
             weather_desc = current['weatherDesc'][0]['value']
@@ -52,44 +71,21 @@ async def get_weather(location: str):
     except Exception as e:
         return {"error": f"Could not fetch weather for {location}: {str(e)}"}
 
-# Map of tool names to functions for easy lookup
+
+# Dynamically construct AVAILABLE_TOOLS and TOOL_DEFINITIONS from the MCP registry
+# for backwards compatibility with the FastAPI / ReAct agent client.
 AVAILABLE_TOOLS = {
-    "get_weather": get_weather,
-    "get_current_time": get_current_time
+    name: tool.fn for name, tool in mcp._tool_manager._tools.items()
 }
 
 TOOL_DEFINITIONS = [
     {
         "type": "function",
         "function": {
-            "name": "get_weather",
-            "description": "Get the current weather in a given location",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The city and state, e.g. San Francisco, CA",
-                    },
-                },
-                "required": ["location"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_current_time",
-            "description": "Get the current date and time for a specific timezone",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "timezone": {
-                        "type": "string",
-                        "description": "The timezone to get the time for, e.g. 'UTC', 'America/New_York', 'Asia/Kolkata'. Default is 'UTC'.",
-                    },
-                },
-            },
-        },
+            "name": tool.name,
+            "description": tool.description.strip() if tool.description else "",
+            "parameters": tool.parameters,
+        }
     }
+    for tool in mcp._tool_manager._tools.values()
 ]
